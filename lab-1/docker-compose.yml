@@ -1,0 +1,19 @@
+version: '3.8'
+services:
+  web:
+    build: .
+    container_name: minimal_http_server
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./content:/app/content
+    restart: unless-stopped
+  # Optional client container for experimentation
+  client:
+    image: python:3.12-slim
+    working_dir: /client
+    volumes:
+      - ./client:/client
+    entrypoint: ["sleep", "infinity"]
+    depends_on:
+      - web

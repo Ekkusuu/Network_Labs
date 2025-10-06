@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Cat Surprise</title>
+        <style>
+            :root { --bg:#0b1020; --text:#eef2ff; --muted:#9aa4c7; --card:#141b34; --border:#232a4a; --btn:#4f7cff; }
+            @media (prefers-color-scheme: light) { :root { --bg:#f4f6fb; --text:#101428; --muted:#50618b; --card:#ffffff; --border:#dfe5fb; --btn:#3056ff; } }
+            html, body { height:100%; }
+            body { margin:0; background:var(--bg); color:var(--text); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; display:grid; place-items:center; }
+            .card { background: var(--card); border:1px solid var(--border); border-radius:14px; padding:20px; max-width: min(92vw, 900px); }
+            .img-wrap { display:flex; align-items:center; justify-content:center; }
+            img { width:100%; height:auto; border-radius: 10px; border:1px solid var(--border); box-shadow: 0 12px 30px rgba(0,0,0,.25); }
+            .actions { margin-top:14px; display:flex; gap:8px; justify-content:flex-end; }
+            .btn { display:inline-block; padding:10px 14px; border-radius:10px; background:var(--btn); color:white; text-decoration:none; border:1px solid transparent; transition: transform .12s ease, filter .12s ease; }
+            .btn:hover { transform: translateY(-1px); filter: brightness(1.05); }
+        </style>
+        <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+        <meta name="color-scheme" content="dark light">
+    </head>
+    <body>
+        <div class="card">
+            <div class="img-wrap">
+                <img src="cat_surprise.png" alt="Cat surprise" />
+            </div>
+            <div class="actions">
+                <a class="btn" href="./">⬅ Back</a>
+            </div>
+        </div>
+    </body>
+</html>
