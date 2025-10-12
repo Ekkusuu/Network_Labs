@@ -1,128 +1,104 @@
-# Minimal HTTP Server (Programming Lab)
+# Lab 1 Report — Minimal HTTP Server (Screenshots Guide)
 
-## Features
-- Serve files from a specified root directory (command-line argument)
-- Supported types: HTML (.html/.htm), PNG (.png), PDF (.pdf)
-- Directory listings (auto-generated HTML similar to `python -m http.server`)
-- Nested directory navigation with parent (..) link
-- Per-file direct download links (`?download=1`)
-- Proper HTTP status codes: 200, 400, 403, 404, 405, 500, 505
-- Path traversal protection
-- Single-request-at-a-time (sequential, no concurrency) per spec
-- Graceful restart using `SO_REUSEADDR` (avoid "Address already in use")
-- Simple Python HTTP client script
+This report demonstrates that all lab requirements were satisfied. Replace each placeholder with your own screenshot, and keep the short description under each.
 
-## Library Restriction
-Implementation intentionally uses only the Python standard modules: `os`, `sys`, and `socket`.
+Tip: On macOS, you can capture windows with Shift+Cmd+4 (then Space), or the whole screen with Shift+Cmd+3.
 
-Implications:
-- No `Date` header (would require `datetime` or manual RFC1123 formatting).
-- No percent-encoding/decoding beyond very simple manual parsing (directory links assume simple filenames without spaces or special characters).
-- Minimal argument parsing (custom lightweight parser instead of `argparse`).
-- No automatic generation of placeholder images; files must exist in `content/`.
+---
 
-These constraints keep the code minimal and aligned with the requirement to avoid additional libraries.
+## 1) Contents of the source directory
+![screenshot](images/01-source-tree.png)
+Short description: Project structure under `lab-1/` (server, client, content, Dockerfile, docker-compose.yml).
 
-## Why Address Reuse Works
-`socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)` allows the server to bind to the same host/port even if the previous socket is in `TIME_WAIT`. Without it, restarting quickly can raise: `OSError: [Errno 48] Address already in use` (macOS) or `[Errno 98]` (Linux). This does **not** violate TCP safety: the OS still prevents active conflicting connections; it just lets the listening socket re-bind sooner.
+---
 
-## Project Structure
-```
-lab-1/
-  server/server.py         # HTTP server
-  client/client.py         # HTTP client
-  content/                 # Served static files
-    index.html
-    cat_surprise.png
-    sample.pdf
-  Dockerfile
-  docker-compose.yml
-```
+## 2) Docker Compose file and Dockerfile
+![screenshot](images/02-compose-file.png)
+Short description: `docker-compose.yml` mapping port 8080 and mounting `content/`.
 
-## Running Locally (Host)
-```bash
-python server/server.py content --port 8080
-# In another shell (client CLI format: server_host server_port filename directory)
-python client/client.py YOUR_LAN_IP 8080 /            .           # print directory listing HTML (dir arg required)
-python client/client.py YOUR_LAN_IP 8080 /index.html  .           # print page HTML
-python client/client.py YOUR_LAN_IP 8080 /sample.pdf  downloads   # save PDF to downloads/
-python client/client.py YOUR_LAN_IP 8080 /cat_surprise.png downloads  # save PNG to downloads/
-```
-Or use a browser: http://YOUR_LAN_IP:8080/
+![screenshot](images/03-dockerfile.png)
+Short description: `Dockerfile` launching `python server.py content --host 0.0.0.0 --port 8080`.
 
-Find YOUR_LAN_IP on macOS:
-```bash
-ipconfig getifaddr en0   # common Wi‑Fi interface
-```
+---
 
-Directory listing example (root of `content`):
-```
-Directory listing for /
-- index.html
-- cat_surprise.png
-- sample.pdf
-```
-(Your output is styled HTML; above is a plain text sketch.)
+## 3) Starting the container
+![screenshot](images/04-up-command.png)
+Short description: Running `docker compose up -d` in the `lab-1` directory.
 
-### Nested directories
-Sample structure provided:
-```
-content/
-  index.html
-  cat_surprise.png
-  sample.pdf
-  docs/
-    index.html
-    book1.pdf
-    book2.pdf
-    more/
-      ebook.pdf
-```
-Navigate to http://YOUR_LAN_IP:8080/docs/ and deeper into /docs/more/.
+---
 
-## Docker Build + Run
-```bash
-docker compose build
-docker compose up -d
-# Browse:
-open http://YOUR_LAN_IP:8080/
-```
-Logs:
-```bash
-docker compose logs -f web
-```
-Stop:
-```bash
-docker compose down
-```
+## 4) Command that runs the server inside the container
+![screenshot](images/05-server-cmd.png)
+Short description: Server entrypoint shows `python server.py content --host 0.0.0.0 --port 8080` (from Dockerfile or logs).
 
-## Client in Docker
-The compose file includes a `client` service for experimentation:
-```bash
-# format: server_host server_port filename directory
-docker compose exec client python client.py web 8080 / .
-docker compose exec client python client.py web 8080 /index.html .
-docker compose exec client python client.py web 8080 /sample.pdf downloads
-docker compose exec client python client.py web 8080 /cat_surprise.png downloads
-```
-Downloaded PNG/PDF files appear inside the `client` container working directory, which is volume-mounted to your host at `lab-1/client/`.
+---
 
-## Security Notes
-- Only basic path traversal prevention (rejects attempts to escape root). Not hardened for production.
-- No MIME sniffing; determinations are by file extension whitelist.
+## 5) Contents of the served directory
+![screenshot](images/06-content-tree.png)
+Short description: `content/` includes `index.html`, `cat_surprise.png`, `sample.pdf`, and nested `docs/` with PDFs.
 
-## Possible Extensions
-- Add caching headers (ETag/Last-Modified)
-- Parallel handling (threading / asyncio)
-- Support Range requests for large files
-- Add logging to a file with common log format
+---
 
-## Friend's Server Browsing
-To browse a friend's server on the same LAN, obtain their IP (e.g., 192.168.1.25) and run:
-```bash
-python client/client.py 192.168.1.25 8080 / ~/Downloads
-```
-(Ensure network/firewall allows the connection.)
+## 6) Browser requests of four files
+### a) Inexistent file (404)
+![screenshot](images/07-404.png)
+Short description: Requesting a missing path returns `404 Not Found`.
 
-## License
-Educational use.
+### b) HTML file with image
+![screenshot](images/08-html-with-image.png)
+Short description: `index.html` renders in browser and displays `cat_surprise.png` via `<img>`.
+
+### c) PDF file
+![screenshot](images/09-pdf-request.png)
+Short description: Requesting a `.pdf` triggers a download (Content-Disposition set by server when using listing link).
+
+### d) PNG file
+![screenshot](images/10-png-request.png)
+Short description: Requesting a `.png` triggers a download (from listing link that appends `?download=1`).
+
+---
+
+## 7) Client usage (optional for extra points)
+![screenshot](images/11-client-run-html.png)
+Short description: Running `python client.py localhost 8080 / ~/Downloads` prints directory listing HTML.
+
+![screenshot](images/12-client-run-pdf.png)
+Short description: Running `python client.py localhost 8080 /docs/book1.pdf ~/Downloads` saves the PDF to `~/Downloads`.
+
+![screenshot](images/13-client-saved-files.png)
+Short description: Finder/Explorer view showing files saved by the client in the chosen directory.
+
+---
+
+## 8) Directory listing (optional for extra points)
+![screenshot](images/14-listing-root.png)
+Short description: Auto-generated directory listing at `/` with styled grid and icons.
+
+![screenshot](images/15-listing-subdir.png)
+Short description: Subdirectory listing (e.g., `/docs/` or `/docs/more/`) with navigation and downloads.
+
+---
+
+## 9) Browsing a friend’s server (optional for extra points)
+![screenshot](images/16-network-setup.png)
+Short description: Network setup diagram (both machines on same LAN/Wi‑Fi).
+
+![screenshot](images/17-find-ip.png)
+Short description: Finding your friend’s IP with `ipconfig getifaddr en0` (macOS) or `ipconfig`/`ip a` (other).
+
+![screenshot](images/18-friend-server-contents.png)
+Short description: Browser showing the contents of your friend’s server (their `content/` listing).
+
+![screenshot](images/19-client-against-friend.png)
+Short description: Using your client to download a file from your friend’s server into your own directory.
+
+---
+
+## Notes (requirements satisfied)
+- Server handles one request at a time and takes the directory to serve as an argument.
+- Parses HTTP requests, serves HTML/PNG/PDF, 404 for missing/unsupported.
+- Directory listing for folders; nested directories supported.
+- Client: `client.py server_host server_port filename directory` — prints HTML, saves PNG/PDF to directory.
+- `SO_REUSEADDR` enables fast restart without "Address already in use".
+
+Feel free to add more screenshots if you tested extra scenarios.

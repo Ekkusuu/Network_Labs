@@ -1,7 +1,0 @@
-__pycache__/
-*.pyc
-*.pyo
-*.png
-*.pdf
-.env
-.ds_store
