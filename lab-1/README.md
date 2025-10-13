@@ -1,104 +1,164 @@
-# Lab 1 Report — Minimal HTTP Server (Screenshots Guide)
+# Lab 1 — Minimal HTTP Server: Verification Report
 
-This report demonstrates that all lab requirements were satisfied. Replace each placeholder with your own screenshot, and keep the short description under each.
 
-Tip: On macOS, you can capture windows with Shift+Cmd+4 (then Space), or the whole screen with Shift+Cmd+3.
+## 1. Bringing the stack up (environment + startup)
+- Command used to build and start containers:
 
----
+```
+docker compose up --build
+```
 
-## 1) Contents of the source directory
-![screenshot](images/01-source-tree.png)
-Short description: Project structure under `lab-1/` (server, client, content, Dockerfile, docker-compose.yml).
+![Startup command](img/image1.png)
 
----
-
-## 2) Docker Compose file and Dockerfile
-![screenshot](images/02-compose-file.png)
-Short description: `docker-compose.yml` mapping port 8080 and mounting `content/`.
-
-![screenshot](images/03-dockerfile.png)
-Short description: `Dockerfile` launching `python server.py content --host 0.0.0.0 --port 8080`.
+Notes:
+- Run from the `lab-1` directory.
+- The `web` service exposes port 8080 to the host.
 
 ---
 
-## 3) Starting the container
-![screenshot](images/04-up-command.png)
-Short description: Running `docker compose up -d` in the `lab-1` directory.
+## 2. What’s being served (directory overview)
+- Root directory passed to the server: `content/`
+- Contents include HTML, a PNG image, one or more PDFs, and a nested subdirectory for deeper navigation.
+
+![Content directory tree](img/image2.png)
+
+Short note: This satisfies the requirement for HTML/PNG/PDF files and a nested directory.
 
 ---
 
-## 4) Command that runs the server inside the container
-![screenshot](images/05-server-cmd.png)
-Short description: Server entrypoint shows `python server.py content --host 0.0.0.0 --port 8080` (from Dockerfile or logs).
+## 3. Landing page and root listing
+- Open the service in a browser:
+
+```
+http://localhost:8080/
+```
+
+![Root in browser](img/image3.png)
 
 ---
 
-## 5) Contents of the served directory
-![screenshot](images/06-content-tree.png)
-Short description: `content/` includes `index.html`, `cat_surprise.png`, `sample.pdf`, and nested `docs/` with PDFs.
+## 4. Static HTML with image reference
+- Request the HTML page that references an image:
+
+```
+http://localhost:8080/index.html
+```
+
+![HTML page with image](img/image4.png)
 
 ---
 
-## 6) Browser requests of four files
-### a) Inexistent file (404)
-![screenshot](images/07-404.png)
-Short description: Requesting a missing path returns `404 Not Found`.
+## 5. Navigating into a subfolder (nested listing)
+- Example nested path:
 
-### b) HTML file with image
-![screenshot](images/08-html-with-image.png)
-Short description: `index.html` renders in browser and displays `cat_surprise.png` via `<img>`.
+```
+http://localhost:8080/books/
+```
 
-### c) PDF file
-![screenshot](images/09-pdf-request.png)
-Short description: Requesting a `.pdf` triggers a download (Content-Disposition set by server when using listing link).
-
-### d) PNG file
-![screenshot](images/10-png-request.png)
-Short description: Requesting a `.png` triggers a download (from listing link that appends `?download=1`).
+![Nested directory listing](img/image5.png)
+![Nested directory listing](img/image5-1.png)
 
 ---
 
-## 7) Client usage (optional for extra points)
-![screenshot](images/11-client-run-html.png)
-Short description: Running `python client.py localhost 8080 / ~/Downloads` prints directory listing HTML.
+## 6. Downloading a PDF
+- Use the directory listing link or request directly:
 
-![screenshot](images/12-client-run-pdf.png)
-Short description: Running `python client.py localhost 8080 /docs/book1.pdf ~/Downloads` saves the PDF to `~/Downloads`.
+```
+http://localhost:8080/books/CSlab1.pdf
+```
 
-![screenshot](images/13-client-saved-files.png)
-Short description: Finder/Explorer view showing files saved by the client in the chosen directory.
-
----
-
-## 8) Directory listing (optional for extra points)
-![screenshot](images/14-listing-root.png)
-Short description: Auto-generated directory listing at `/` with styled grid and icons.
-
-![screenshot](images/15-listing-subdir.png)
-Short description: Subdirectory listing (e.g., `/docs/` or `/docs/more/`) with navigation and downloads.
+![PDF download](img/image6.png)
 
 ---
 
-## 9) Browsing a friend’s server (optional for extra points)
-![screenshot](images/16-network-setup.png)
-Short description: Network setup diagram (both machines on same LAN/Wi‑Fi).
+## 7. Client program runs (HTML, PDF, directory)
+The included client takes four arguments: `server_host server_port filename directory`.
 
-![screenshot](images/17-find-ip.png)
-Short description: Finding your friend’s IP with `ipconfig getifaddr en0` (macOS) or `ipconfig`/`ip a` (other).
+1) Fetch HTML and print to console
 
-![screenshot](images/18-friend-server-contents.png)
-Short description: Browser showing the contents of your friend’s server (their `content/` listing).
+```
+python client\client.py localhost 8080 index.html .
+```
 
-![screenshot](images/19-client-against-friend.png)
-Short description: Using your client to download a file from your friend’s server into your own directory.
+![Client fetching HTML](img/image7.png)
+
+2) Download a PDF into the current folder
+
+```
+python client\client.py localhost 8080 books\CSlab2.pdf .
+```
+
+![Client downloading PDF](img/image7-1.png)
+
+
+3) Fetch a directory listing (prints HTML)
+
+```
+python client\client.py localhost 8080 books\ .
+```
+
+![Client saved file result](img/image7-2.png)
 
 ---
 
-## Notes (requirements satisfied)
-- Server handles one request at a time and takes the directory to serve as an argument.
-- Parses HTTP requests, serves HTML/PNG/PDF, 404 for missing/unsupported.
-- Directory listing for folders; nested directories supported.
-- Client: `client.py server_host server_port filename directory` — prints HTML, saves PNG/PDF to directory.
-- `SO_REUSEADDR` enables fast restart without "Address already in use".
+## 8. Testing across the LAN (optional)
+- From another device on the same network (replace with your LAN IP):
 
-Feel free to add more screenshots if you tested extra scenarios.
+```
+python client\client.py 192.168.18.5 8080 index.html .
+```
+
+![LAN access test](img/image8.png)
+
+---
+
+## 9. Error behavior example (404)
+- Browser example (unsupported/missing):
+
+```
+http://localhost:8080/happiness
+```
+
+![404 in browser](img/image9.png)
+
+- Client example:
+
+```
+python client\client.py localhost 8080 happiness/ .
+```
+
+![404 via client](img/image9-1.png)
+
+---
+
+## 10. Compliance checklist
+- Docker + Compose workflow: Implemented
+- Single‑request TCP HTTP server: Implemented
+- File types: HTML, PNG, PDF are served
+- 404 handling: Missing/unsupported files return 404
+- Directory listing: Implemented, supports nested folders
+- Subdirectory with PDFs/PNG: Present (e.g., `books/`)
+- Client CLI: `client.py host port filename directory` prints HTML, saves PNG/PDF
+- Image reference in HTML: Present in `index.html`
+- Bonus (LAN browsing): Possible; steps provided
+
+---
+
+## 11. Stopping and cleanup
+- Graceful stop of containers:
+
+```
+docker compose down
+```
+
+Or stop with Ctrl+C if running in the foreground.
+
+![Teardown / compose down](img/image11.png)
+
+---
+
+## 12. Notes and small design choices
+- Only required extensions are served; others return 404 for clarity.
+- Path traversal is blocked by a normalized path prefix check.
+- Uses only Python standard library (`os`, `sys`, `socket`).
+
