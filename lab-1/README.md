@@ -1,128 +1,164 @@
-# Minimal HTTP Server (Programming Lab)
+# Lab 1 — Minimal HTTP Server: Verification Report
 
-## Features
-- Serve files from a specified root directory (command-line argument)
-- Supported types: HTML (.html/.htm), PNG (.png), PDF (.pdf)
-- Directory listings (auto-generated HTML similar to `python -m http.server`)
-- Nested directory navigation with parent (..) link
-- Per-file direct download links (`?download=1`)
-- Proper HTTP status codes: 200, 400, 403, 404, 405, 500, 505
-- Path traversal protection
-- Single-request-at-a-time (sequential, no concurrency) per spec
-- Graceful restart using `SO_REUSEADDR` (avoid "Address already in use")
-- Simple Python HTTP client script
 
-## Library Restriction
-Implementation intentionally uses only the Python standard modules: `os`, `sys`, and `socket`.
+## 1. Bringing the stack up (environment + startup)
+- Command used to build and start containers:
 
-Implications:
-- No `Date` header (would require `datetime` or manual RFC1123 formatting).
-- No percent-encoding/decoding beyond very simple manual parsing (directory links assume simple filenames without spaces or special characters).
-- Minimal argument parsing (custom lightweight parser instead of `argparse`).
-- No automatic generation of placeholder images; files must exist in `content/`.
-
-These constraints keep the code minimal and aligned with the requirement to avoid additional libraries.
-
-## Why Address Reuse Works
-`socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)` allows the server to bind to the same host/port even if the previous socket is in `TIME_WAIT`. Without it, restarting quickly can raise: `OSError: [Errno 48] Address already in use` (macOS) or `[Errno 98]` (Linux). This does **not** violate TCP safety: the OS still prevents active conflicting connections; it just lets the listening socket re-bind sooner.
-
-## Project Structure
 ```
-lab-1/
-  server/server.py         # HTTP server
-  client/client.py         # HTTP client
-  content/                 # Served static files
-    index.html
-    cat_surprise.png
-    sample.pdf
-  Dockerfile
-  docker-compose.yml
+docker compose up --build
 ```
 
-## Running Locally (Host)
-```bash
-python server/server.py content --port 8080
-# In another shell (client CLI format: server_host server_port filename directory)
-python client/client.py YOUR_LAN_IP 8080 /            .           # print directory listing HTML (dir arg required)
-python client/client.py YOUR_LAN_IP 8080 /index.html  .           # print page HTML
-python client/client.py YOUR_LAN_IP 8080 /sample.pdf  downloads   # save PDF to downloads/
-python client/client.py YOUR_LAN_IP 8080 /cat_surprise.png downloads  # save PNG to downloads/
-```
-Or use a browser: http://YOUR_LAN_IP:8080/
+![Startup command](img/image1.png)
 
-Find YOUR_LAN_IP on macOS:
-```bash
-ipconfig getifaddr en0   # common Wi‑Fi interface
+Notes:
+- Run from the `lab-1` directory.
+- The `web` service exposes port 8080 to the host.
+
+---
+
+## 2. What’s being served (directory overview)
+- Root directory passed to the server: `content/`
+- Contents include HTML, a PNG image, one or more PDFs, and a nested subdirectory for deeper navigation.
+
+![Content directory tree](img/image2.png)
+
+Short note: This satisfies the requirement for HTML/PNG/PDF files and a nested directory.
+
+---
+
+## 3. Landing page and root listing
+- Open the service in a browser:
+
+```
+http://localhost:8080/
 ```
 
-Directory listing example (root of `content`):
-```
-Directory listing for /
-- index.html
-- cat_surprise.png
-- sample.pdf
-```
-(Your output is styled HTML; above is a plain text sketch.)
+![Root in browser](img/image3.png)
 
-### Nested directories
-Sample structure provided:
-```
-content/
-  index.html
-  cat_surprise.png
-  sample.pdf
-  docs/
-    index.html
-    book1.pdf
-    book2.pdf
-    more/
-      ebook.pdf
-```
-Navigate to http://YOUR_LAN_IP:8080/docs/ and deeper into /docs/more/.
+---
 
-## Docker Build + Run
-```bash
-docker compose build
-docker compose up -d
-# Browse:
-open http://YOUR_LAN_IP:8080/
+## 4. Static HTML with image reference
+- Request the HTML page that references an image:
+
 ```
-Logs:
-```bash
-docker compose logs -f web
+http://localhost:8080/index.html
 ```
-Stop:
-```bash
+
+![HTML page with image](img/image4.png)
+
+---
+
+## 5. Navigating into a subfolder (nested listing)
+- Example nested path:
+
+```
+http://localhost:8080/books/
+```
+
+![Nested directory listing](img/image5.png)
+![Nested directory listing](img/image5-1.png)
+
+---
+
+## 6. Downloading a PDF
+- Use the directory listing link or request directly:
+
+```
+http://localhost:8080/books/CSlab1.pdf
+```
+
+![PDF download](img/image6.png)
+
+---
+
+## 7. Client program runs (HTML, PDF, directory)
+The included client takes four arguments: `server_host server_port filename directory`.
+
+1) Fetch HTML and print to console
+
+```
+python client\client.py localhost 8080 index.html .
+```
+
+![Client fetching HTML](img/image7.png)
+
+2) Download a PDF into the current folder
+
+```
+python client\client.py localhost 8080 books\CSlab2.pdf .
+```
+
+![Client downloading PDF](img/image7-1.png)
+
+
+3) Fetch a directory listing (prints HTML)
+
+```
+python client\client.py localhost 8080 books\ .
+```
+
+![Client saved file result](img/image7-2.png)
+
+---
+
+## 8. Testing across the LAN (optional)
+- From another device on the same network (replace with your LAN IP):
+
+```
+python client\client.py 192.168.18.5 8080 index.html .
+```
+
+![LAN access test](img/image8.png)
+
+---
+
+## 9. Error behavior example (404)
+- Browser example (unsupported/missing):
+
+```
+http://localhost:8080/happiness
+```
+
+![404 in browser](img/image9.png)
+
+- Client example:
+
+```
+python client\client.py localhost 8080 happiness/ .
+```
+
+![404 via client](img/image9-1.png)
+
+---
+
+## 10. Compliance checklist
+- Docker + Compose workflow: Implemented
+- Single‑request TCP HTTP server: Implemented
+- File types: HTML, PNG, PDF are served
+- 404 handling: Missing/unsupported files return 404
+- Directory listing: Implemented, supports nested folders
+- Subdirectory with PDFs/PNG: Present (e.g., `books/`)
+- Client CLI: `client.py host port filename directory` prints HTML, saves PNG/PDF
+- Image reference in HTML: Present in `index.html`
+- Bonus (LAN browsing): Possible; steps provided
+
+---
+
+## 11. Stopping and cleanup
+- Graceful stop of containers:
+
+```
 docker compose down
 ```
 
-## Client in Docker
-The compose file includes a `client` service for experimentation:
-```bash
-# format: server_host server_port filename directory
-docker compose exec client python client.py web 8080 / .
-docker compose exec client python client.py web 8080 /index.html .
-docker compose exec client python client.py web 8080 /sample.pdf downloads
-docker compose exec client python client.py web 8080 /cat_surprise.png downloads
-```
-Downloaded PNG/PDF files appear inside the `client` container working directory, which is volume-mounted to your host at `lab-1/client/`.
+Or stop with Ctrl+C if running in the foreground.
 
-## Security Notes
-- Only basic path traversal prevention (rejects attempts to escape root). Not hardened for production.
-- No MIME sniffing; determinations are by file extension whitelist.
+![Teardown / compose down](img/image11.png)
 
-## Possible Extensions
-- Add caching headers (ETag/Last-Modified)
-- Parallel handling (threading / asyncio)
-- Support Range requests for large files
-- Add logging to a file with common log format
+---
 
-## Friend's Server Browsing
-To browse a friend's server on the same LAN, obtain their IP (e.g., 192.168.1.25) and run:
-```bash
-python client/client.py 192.168.1.25 8080 / ~/Downloads
-```
-(Ensure network/firewall allows the connection.)
+## 12. Notes and small design choices
+- Only required extensions are served; others return 404 for clarity.
+- Path traversal is blocked by a normalized path prefix check.
+- Uses only Python standard library (`os`, `sys`, `socket`).
 
-## License
-Educational use.
