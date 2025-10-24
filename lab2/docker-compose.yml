@@ -1,0 +1,22 @@
+version: '3.8'
+services:
+  multi_unsafe:
+    build: .
+    command: python server.py content --host 0.0.0.0 --port 8080 --unsafe
+    ports:
+      - "8080:8080"
+  multi_safe:
+    build: .
+    command: python server.py content --host 0.0.0.0 --port 8082
+    ports:
+      - "8082:8082"
+  single:
+    build: .
+    command: python server_single.py content --host 0.0.0.0 --port 8081
+    ports:
+      - "8081:8081"
+  rate:
+    build: .
+    command: python server.py content --host 0.0.0.0 --port 8083 --rate-limit --rate 5
+    ports:
+      - "8083:8083"
