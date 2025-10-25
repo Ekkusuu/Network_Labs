@@ -1,11 +1,3 @@
-#!/usr/bin/env python3
-"""Multithreaded HTTP server (thread-per-request).
-
-Usage:
-  python server.py <root_directory> [--host 0.0.0.0] [--port 8080]
-
-This server sleeps ~1s inside the request handler to simulate work.
-"""
 import os
 import sys
 import socket
