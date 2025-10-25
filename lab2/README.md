@@ -24,6 +24,10 @@ Command used (issues 10 concurrent requests and prints elapsed time for both ser
 python C:\Users\saval\Desktop\Network_Labs\lab2\test_concurrency.py --single-url http://127.0.0.1:8081/index.html --multi-url http://127.0.0.1:8082/index.html
 ```
 
+Short note on multithreading in the code:
+
+- The multithreaded server uses a thread-per-connection model: `serve()` accepts a socket and spawns a daemon `threading.Thread` that runs `handle_connection()` for that client. Each thread runs `handle_request()` (which intentionally sleeps ~1s to simulate work), so multiple requests are served in parallel. The single-threaded server processes requests sequentially, which is why the multithreaded run is faster under concurrent load.
+
 
 
 ![all_thread_10req](images/all_thread_10req.png)
