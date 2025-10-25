@@ -231,10 +231,33 @@ def handle_connection(conn, addr, root):
                 request += chunk
             # Rate limiting by client IP (optional) - strict sliding 1s window
             if RATE_LIMIT_ENABLED:
+                # Prefer X-Forwarded-For header when present (useful behind proxies).
+                client_ip = None
                 try:
-                    client_ip = addr[0]
+                    text = request.decode('iso-8859-1', errors='replace')
+                    # Parse headers to look for X-Forwarded-For (simple linear scan)
+                    lines = text.split('\r\n')
+                    for h in lines[1:]:
+                        if not h:
+                            break
+                        parts = h.split(':', 1)
+                        if len(parts) != 2:
+                            continue
+                        k = parts[0].strip().lower()
+                        v = parts[1].strip()
+                        if k == 'x-forwarded-for' and v:
+                            # header may contain a comma-separated list; take the first IP
+                            client_ip = v.split(',')[0].strip()
+                            break
                 except Exception:
                     client_ip = None
+                # Fall back to socket address if header not present
+                if not client_ip:
+                    try:
+                        client_ip = addr[0]
+                    except Exception:
+                        client_ip = None
+
                 if client_ip:
                     now = time.time()
                     window = 1.0
@@ -252,6 +275,11 @@ def handle_connection(conn, addr, root):
                             dq.append(now)
                             allowed = True
                     if not allowed:
+                        # Optionally log a brief message to stdout for debugging
+                        try:
+                            print(f"[rate] {client_ip} -> 429 (over {limit}/s)")
+                        except Exception:
+                            pass
                         resp = build_response('429 Too Many Requests', {'Content-Type': 'text/plain; charset=utf-8', 'Retry-After': '1'}, b'Too Many Requests')
                         conn.sendall(resp)
                         return
