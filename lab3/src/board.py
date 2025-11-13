@@ -1,10 +1,3 @@
-"""
-Copyright (c) 2021-25 MIT 6.102/6.031 course staff, all rights reserved.
-Redistribution of original or derived work requires permission of course staff.
-
-Board ADT for Memory Scramble game.
-"""
-
 import asyncio
 import aiofiles
 from typing import Optional, Dict, Set, List, Callable, Awaitable

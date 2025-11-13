@@ -1,13 +1,3 @@
-"""
-Copyright (c) 2021-25 MIT 6.102/6.031 course staff, all rights reserved.
-Redistribution of original or derived work requires permission of course staff.
-
-String-based commands provided by the Memory Scramble game.
-
-PS4 instructions: these are required functions.
-You MUST NOT change the names, type signatures, or specs of these functions.
-"""
-
 from typing import Callable, Awaitable
 from board import Board
 

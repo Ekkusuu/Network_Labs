@@ -1,22 +1,3 @@
-"""
-Copyright (c) 2021-25 MIT 6.102/6.031 course staff, all rights reserved.
-Redistribution of original or derived work requires permission of course staff.
-
-HTTP web game server for Memory Scramble.
-
-PS4 instructions: you are advised *not* to modify this file.
-
-Command-line usage:
-    python server.py PORT FILENAME
-where:
-  - PORT is an integer that specifies the server's listening port number,
-  - FILENAME is the path to a valid board file, which will be loaded as
-    the starting game board.
-
-For example, to start a web server on port 8080 using the board in `boards/perfect.txt`:
-    python server.py 8080 boards/perfect.txt
-"""
-
 import sys
 import asyncio
 import threading

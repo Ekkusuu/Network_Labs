@@ -1,8 +1,3 @@
-"""
-Simulation of a Memory Scramble game with multiple players.
-This is useful for testing the board with concurrent operations.
-"""
-
 import asyncio
 import sys
 import os
@@ -75,9 +70,9 @@ async def main():
     """Run a simulation of the Memory Scramble game."""
     filename = 'boards/ab.txt'
     size = 5
-    num_players = 4  # Requirements: 4 players
-    flip_attempts = 100  # Requirements: 100 flip attempts each (not move pairs)
-    max_delay_ms = 2  # Requirements: timeouts between 0.1ms and 2ms
+    num_players = 4  
+    flip_attempts = 100  
+    max_delay_ms = 2  
     min_delay_ms = 0.1
     
     print("=" * 60)
