@@ -19,6 +19,7 @@ For example, to start a web server on port 8080 using the board in `boards/perfe
 
 import sys
 import asyncio
+import threading
 from flask import Flask, send_from_directory
 from flask_cors import CORS
 from board import Board
@@ -39,6 +40,11 @@ class WebServer:
         self.port = port
         self.app = Flask(__name__, static_folder='../public', static_url_path='')
         
+        # Create a dedicated event loop for async operations
+        self.loop = asyncio.new_event_loop()
+        self.loop_thread = threading.Thread(target=self._run_event_loop, daemon=True)
+        self.loop_thread.start()
+        
         # Enable CORS to allow requests from web pages hosted anywhere
         CORS(self.app)
         
@@ -51,7 +57,9 @@ class WebServer:
             
             Response is the board state from player_id's perspective.
             """
-            board_state = asyncio.run(look(self.board, player_id))
+            board_state = asyncio.run_coroutine_threadsafe(
+                look(self.board, player_id), self.loop
+            ).result()
             return board_state, 200, {'Content-Type': 'text/plain'}
         
         # Route: GET /flip/<player_id>/<row>,<column>
@@ -69,7 +77,9 @@ class WebServer:
                 row = int(parts[0])
                 column = int(parts[1])
                 
-                board_state = asyncio.run(flip(self.board, player_id, row, column))
+                board_state = asyncio.run_coroutine_threadsafe(
+                    flip(self.board, player_id, row, column), self.loop
+                ).result()
                 return board_state, 200, {'Content-Type': 'text/plain'}
             except ValueError as e:
                 return f"cannot flip this card: {e}", 409, {'Content-Type': 'text/plain'}
@@ -91,7 +101,9 @@ class WebServer:
             async def transform(card: str) -> str:
                 return to_card if card == from_card else card
             
-            board_state = asyncio.run(map_cards(self.board, player_id, transform))
+            board_state = asyncio.run_coroutine_threadsafe(
+                map_cards(self.board, player_id, transform), self.loop
+            ).result()
             return board_state, 200, {'Content-Type': 'text/plain'}
         
         # Route: GET /watch/<player_id>
@@ -106,7 +118,9 @@ class WebServer:
             
             Response is the new state of the board from the perspective of player_id.
             """
-            board_state = asyncio.run(watch(self.board, player_id))
+            board_state = asyncio.run_coroutine_threadsafe(
+                watch(self.board, player_id), self.loop
+            ).result()
             return board_state, 200, {'Content-Type': 'text/plain'}
         
         # Route: GET /
@@ -118,6 +132,11 @@ class WebServer:
             Response is the game UI as an HTML page.
             """
             return send_from_directory('../public', 'index.html')
+    
+    def _run_event_loop(self):
+        """Run the event loop in a background thread."""
+        asyncio.set_event_loop(self.loop)
+        self.loop.run_forever()
     
     def start(self):
         """Start this server."""

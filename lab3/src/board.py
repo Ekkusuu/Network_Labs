@@ -329,6 +329,7 @@ class Board:
             # Wake up anyone waiting for the relinquished card
             if first_card_pos:
                 self._wake_waiters(first_card_pos)
+            self._notify_change()
             raise ValueError("No card at this position")
         
         # Rule 2-B: Card is controlled by someone (including self)
@@ -341,6 +342,7 @@ class Board:
             # Wake up anyone waiting for the relinquished card
             if first_card_pos:
                 self._wake_waiters(first_card_pos)
+            self._notify_change()
             raise ValueError("Card is already controlled")
         
         # Rule 2-C: Turn face up if face down
@@ -404,8 +406,6 @@ class Board:
                 # Only turn face down if face up and not controlled
                 if state == CardState.FACE_UP and controller is None:
                     self._card_states[row][col] = CardState.FACE_DOWN
-                    # Wake up anyone waiting for this card (now that it's available)
-                    self._wake_waiters(pos)
                     self._notify_change()
         
         player.previous_cards = []
@@ -539,25 +539,19 @@ class Board:
         :param player_id: ID of the player watching
         :return: board state after a change occurs
         """
+        # Create a future to wait for change
+        future = asyncio.Future()
+        
         async with self._lock:
             self._ensure_player(player_id)
-            current_version = self._version
-            
-            # If already changed, return immediately
-            if current_version != self._version:
-                return self._get_board_state(player_id)
-            
-            # Create a future to wait for change
-            future = asyncio.Future()
+            # Register as a listener for the next change
             self._change_listeners.append(future)
-            
-            # Release lock while waiting
-            self._lock.release()
-            try:
-                await future
-            finally:
-                await self._lock.acquire()
-            
+        
+        # Wait for change outside the lock
+        await future
+        
+        # Get the updated board state
+        async with self._lock:
             return self._get_board_state(player_id)
     
     def _notify_change(self) -> None:
