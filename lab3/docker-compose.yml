@@ -1,0 +1,11 @@
+services:
+  memory-scramble:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./boards:/app/boards
+      - ./public:/app/public
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: python src/server.py 8080 boards/perfect.txt
