@@ -434,31 +434,90 @@ Loading board from boards/ab.txt...
 Board loaded: Board(5x5, 25 cards)
 
 Starting simulation with 4 players...
-Each player will make 100 move attempts
+Each player will make 100 flip attempts
 Random delays between 0.1ms and 2ms
 
+Player player0 starting...
+Player player1 starting...
+Player player2 starting...
+Player player3 starting...
 ...player moves...
+Player player0 finished 100 flip attempts.
+Player player2 finished 100 flip attempts.
+Player player3 finished 100 flip attempts.
+Player player1 finished 100 flip attempts.
+
+============================================================
+SIMULATION COMPLETE!
+============================================================
+
+Final board state:
+5x5
+none
+none
+none
+none
+none
+none
+none
+none
+none
+none
+none
+none
+none
+none
+none
+none
+none
+none
+none
+none
+down
+none
+none
+none
+none
 
 ============================================================
 PLAYER STATISTICS
 ============================================================
 
 player0:
-  Total moves attempted: 61
-  Successful flips: 27
-  Failed flips: 95
-  Time taken: 0.25 seconds
-  Success rate: 22.1%
+  Total flip attempts: 100
+  Successful flips: 18
+  Failed flips: 82
+  Time taken: 0.21 seconds
+  Success rate: 18.0%
 
-...other players...
+player1:
+  Total flip attempts: 100
+  Successful flips: 15
+  Failed flips: 85
+  Time taken: 0.22 seconds
+  Success rate: 15.0%
+
+player2:
+  Total flip attempts: 100
+  Successful flips: 18
+  Failed flips: 82
+  Time taken: 0.21 seconds
+  Success rate: 18.0%
+
+player3:
+  Total flip attempts: 100
+  Successful flips: 24
+  Failed flips: 76
+  Time taken: 0.21 seconds
+  Success rate: 24.0%
 
 ============================================================
 OVERALL STATISTICS
 ============================================================
-Total simulation time: 0.28 seconds
-Total moves by all players: 245
-Total successful flips: 116
-Total failed flips: 377
+Total simulation time: 0.22 seconds
+Total flip attempts by all players: 400
+Total successful flips: 75
+Total failed flips: 325
 ============================================================
 ```
 
