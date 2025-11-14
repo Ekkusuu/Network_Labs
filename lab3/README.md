@@ -24,7 +24,7 @@ Memory Scramble is a networked, concurrent version of the classic Memory/Concent
 - ✅ **Thread-safe** - All operations use proper async locking mechanisms
 - ✅ **Network-enabled** - Play through a web browser with real-time updates
 - ✅ **Docker-ready** - One-command deployment with Docker Compose
-- ✅ **Comprehensive testing** - 26 unit tests covering all game rules
+- ✅ **Comprehensive testing** - 29 unit tests covering all 11 game rules (1-A through 3-B)
 - ✅ **Stress-tested** - Simulations with 4 concurrent players, 100 moves each, sub-millisecond timing
 
 ### Architecture Requirements
@@ -83,7 +83,7 @@ lab3/
 │   ├── server.py          # HTTP server (160 lines)
 │   └── simulation.py      # Concurrent player simulation (185 lines)
 ├── tests/
-│   └── test_board.py      # Comprehensive test suite (405 lines, 26 tests)
+│   └── test_board.py      # Comprehensive test suite (457 lines, 29 tests)
 ├── boards/
 │   ├── ab.txt            # 5x5 grid with A/B cards
 │   ├── perfect.txt       # 3x3 grid with emojis
@@ -324,7 +324,7 @@ docker-compose down
 
 ### Test Suite (tests/test_board.py)
 
-Comprehensive test suite with **26 tests** covering all aspects of the Memory Scramble game implementation. Each test validates specific functionality and game rules.
+Comprehensive test suite with **29 tests** covering all aspects of the Memory Scramble game implementation, including **explicit tests for all 11 game rules (1-A through 3-B)**. Each test validates specific functionality and game rules.
 
 ---
 
@@ -356,20 +356,20 @@ Comprehensive test suite with **26 tests** covering all aspects of the Memory Sc
 
 #### First Card Flip Rules (3 tests)
 
-**`test_flip_first_card_face_down` (Rule 1-B)**
+**`test_rule_1b_flip_first_card_face_down` (Rule 1-B)**
 - **Purpose**: Validates flipping a face-down card as first card
 - **Coverage**: Rule 1-B - standard first flip operation
 - **Validation**: Card becomes face-up and controlled by player
 - **Expected**: State shows `my A` for controlled card, others remain `down`
 
-**`test_flip_first_card_face_up_uncontrolled` (Rule 1-C)**
+**`test_rule_1c_flip_first_card_face_up_uncontrolled` (Rule 1-C)**
 - **Purpose**: Validates taking control of face-up uncontrolled card
 - **Coverage**: Rule 1-C - flip face-up card not controlled by anyone
 - **Test Flow**: Alice flips and fails match → Bob takes control of Alice's abandoned card
 - **Validation**: Bob successfully controls previously face-up card
 - **Expected**: Bob's state shows `my A` for the card
 
-**`test_flip_empty_space_first_card` (Rule 1-A)**
+**`test_rule_1a_flip_empty_space_first_card` (Rule 1-A)**
 - **Purpose**: Validates error handling when flipping empty position
 - **Coverage**: Rule 1-A - cannot flip empty space
 - **Test Flow**: Alice matches and removes cards → Bob attempts flip on empty position
@@ -378,41 +378,65 @@ Comprehensive test suite with **26 tests** covering all aspects of the Memory Sc
 
 ---
 
-#### Second Card Flip Rules (3 tests)
+#### Second Card Flip Rules (6 tests)
 
-**`test_flip_second_card_matching` (Rule 2-D)**
+**`test_rule_2d_flip_second_card_matching` (Rule 2-D)**
 - **Purpose**: Validates matching pair behavior
 - **Coverage**: Rule 2-D - flipping matching second card
 - **Test Flow**: Alice flips card at (0,0), then matching card at (1,0)
 - **Validation**: Both cards show as controlled (`my A`)
 - **Expected**: Cards remain face-up and controlled until next move
 
-**`test_flip_second_card_non_matching` (Rule 2-E)**
+**`test_rule_2e_flip_second_card_non_matching` (Rule 2-E)**
 - **Purpose**: Validates non-matching pair behavior
 - **Coverage**: Rule 2-E - flipping non-matching second card
 - **Test Flow**: Alice flips A at (0,0), then B at (0,1)
 - **Validation**: Both cards face-up but not controlled
 - **Expected**: State shows `up A` and `up B` (visible but uncontrolled)
 
-**`test_flip_empty_space_second_card` (Rule 2-A)**
+**`test_rule_2a_flip_empty_space_second_card` (Rule 2-A)**
 - **Purpose**: Validates error handling for empty space as second card
 - **Coverage**: Rule 2-A - cannot flip empty space as second card
 - **Test Flow**: Alice removes cards → Bob flips first card → Bob attempts second flip on empty space
 - **Validation**: Raises `ValueError`, Bob's first card is released
 - **Partition**: Second card flip on empty position
 
+**`test_rule_2b_flip_controlled_card_second_card` (Rule 2-B)**
+- **Purpose**: Validates attempting to flip same card twice (controlled by self)
+- **Coverage**: Rule 2-B - cannot flip controlled card as second card
+- **Test Flow**: Alice flips first card → Alice tries to flip same card as second
+- **Validation**: Raises `ValueError` with "Card is already controlled"
+- **Expected**: Alice's first card is relinquished but remains face-up (`up A`)
+- **Critical**: Operation fails immediately, does not wait
+
+**`test_rule_2b_flip_other_player_controlled_second_card` (Rule 2-B)**
+- **Purpose**: Validates attempting to flip another player's controlled card as second card
+- **Coverage**: Rule 2-B - cannot flip card controlled by another player
+- **Test Flow**: Alice flips first card → Bob flips first card → Alice tries Bob's card as second
+- **Validation**: Raises `ValueError`, Alice's card relinquished
+- **Expected**: Alice's card shows `up A` (face-up, uncontrolled), Bob still controls `my B`
+- **Critical**: Demonstrates no-wait behavior to avoid deadlocks
+
+**`test_rule_2c_flip_face_down_second_card` (Rule 2-C)**
+- **Purpose**: Validates face-down card turns face-up when flipped as second card
+- **Coverage**: Rule 2-C - second card turns face-up if face-down
+- **Test Flow**: Alice flips first card (face-down → face-up) → flips different face-down card as second
+- **Validation**: Explicit assertion that second card was `down` before flip, `up B` after
+- **Expected**: Both cards are face-up after second flip (Rule 2-C applied)
+- **Note**: Previously only implicitly tested in 2-D/2-E tests
+
 ---
 
 #### Post-Move Cleanup Rules (2 tests)
 
-**`test_matched_cards_removed` (Rule 3-A)**
+**`test_rule_3a_matched_cards_removed` (Rule 3-A)**
 - **Purpose**: Validates matched cards are removed on next move
 - **Coverage**: Rule 3-A - remove matched pairs
 - **Test Flow**: Alice matches two A cards → Alice makes another move
 - **Validation**: Previous matched cards show as `none` (removed)
 - **Expected**: Board has empty positions where matched cards were
 
-**`test_non_matching_cards_turned_face_down` (Rule 3-B)**
+**`test_rule_3b_non_matching_cards_turned_face_down` (Rule 3-B)**
 - **Purpose**: Validates non-matching cards turn face-down
 - **Coverage**: Rule 3-B - turn uncontrolled face-up cards face-down
 - **Test Flow**: Alice flips non-matching A and B → Alice makes another move
@@ -475,7 +499,7 @@ Comprehensive test suite with **26 tests** covering all aspects of the Memory Sc
 - **Expected**: Both players get their cards (`my` in both states)
 - **Performance**: Demonstrates proper concurrent design
 
-**`test_concurrent_flips_same_card_wait` (Rule 1-D)**
+**`test_rule_1d_concurrent_flips_same_card_wait` (Rule 1-D)**
 - **Purpose**: Validates waiting mechanism for controlled cards
 - **Coverage**: Rule 1-D - wait for controlled card to become available
 - **Test Flow**: Alice flips and controls card → Bob tries same card → Alice releases it
@@ -552,16 +576,27 @@ Comprehensive test suite with **26 tests** covering all aspects of the Memory Sc
 | Board Parsing | 2 | File I/O, initialization |
 | Basic Operations | 1 | Look operation |
 | Rule 1 (First Flip) | 3 | Rules 1-A, 1-B, 1-C |
-| Rule 2 (Second Flip) | 3 | Rules 2-A, 2-D, 2-E |
+| Rule 2 (Second Flip) | 6 | Rules 2-A, 2-B (×2), 2-C, 2-D, 2-E |
 | Rule 3 (Cleanup) | 2 | Rules 3-A, 3-B |
 | Map Operation | 3 | Transform, consistency |
 | Watch Operation | 2 | Change detection |
-| Concurrency | 3 | Parallel ops, waiting |
+| Concurrency | 3 | Parallel ops, waiting (Rule 1-D) |
 | Error Handling | 2 | Validation, errors |
 | Card ADT | 4 | Card implementation |
-| **TOTAL** | **26** | **100% rule coverage** |
+| **TOTAL** | **29** | **100% rule coverage** |
 
-**Note**: Rule 1-D and 2-C (waiting for controlled cards) are covered by `test_concurrent_flips_same_card_wait`.
+**All 11 Game Rules Explicitly Tested:**
+- ✅ Rule 1-A: `test_rule_1a_flip_empty_space_first_card`
+- ✅ Rule 1-B: `test_rule_1b_flip_first_card_face_down`
+- ✅ Rule 1-C: `test_rule_1c_flip_first_card_face_up_uncontrolled`
+- ✅ Rule 1-D: `test_rule_1d_concurrent_flips_same_card_wait`
+- ✅ Rule 2-A: `test_rule_2a_flip_empty_space_second_card`
+- ✅ Rule 2-B: `test_rule_2b_flip_controlled_card_second_card` + `test_rule_2b_flip_other_player_controlled_second_card`
+- ✅ Rule 2-C: `test_rule_2c_flip_face_down_second_card`
+- ✅ Rule 2-D: `test_rule_2d_flip_second_card_matching`
+- ✅ Rule 2-E: `test_rule_2e_flip_second_card_non_matching`
+- ✅ Rule 3-A: `test_rule_3a_matched_cards_removed`
+- ✅ Rule 3-B: `test_rule_3b_non_matching_cards_turned_face_down`
 
 ### Running Tests
 
@@ -577,14 +612,25 @@ docker-compose run --rm memory-scramble pytest tests/test_board.py -v
 
 ```
 =========================================== test session starts ============================================
-collected 26 items
+collected 29 items
 
 tests/test_board.py::TestBoard::test_parse_simple_board PASSED                                       [  3%]
-tests/test_board.py::TestBoard::test_parse_perfect_board PASSED                                      [  7%]
+tests/test_board.py::TestBoard::test_parse_perfect_board PASSED                                      [  6%]
+tests/test_board.py::TestBoard::test_rule_1b_flip_first_card_face_down PASSED                        [ 13%]
+tests/test_board.py::TestBoard::test_rule_1c_flip_first_card_face_up_uncontrolled PASSED             [ 17%]
+tests/test_board.py::TestBoard::test_rule_1a_flip_empty_space_first_card PASSED                      [ 20%]
+tests/test_board.py::TestBoard::test_rule_2d_flip_second_card_matching PASSED                        [ 24%]
+tests/test_board.py::TestBoard::test_rule_2e_flip_second_card_non_matching PASSED                    [ 27%]
+tests/test_board.py::TestBoard::test_rule_2a_flip_empty_space_second_card PASSED                     [ 31%]
+tests/test_board.py::TestBoard::test_rule_2b_flip_controlled_card_second_card PASSED                 [ 34%]
+tests/test_board.py::TestBoard::test_rule_2b_flip_other_player_controlled_second_card PASSED         [ 37%]
+tests/test_board.py::TestBoard::test_rule_2c_flip_face_down_second_card PASSED                       [ 41%]
+tests/test_board.py::TestBoard::test_rule_3a_matched_cards_removed PASSED                            [ 44%]
+tests/test_board.py::TestBoard::test_rule_3b_non_matching_cards_turned_face_down PASSED              [ 48%]
 ...
 tests/test_board.py::TestCard::test_card_invalid_label PASSED                                        [100%]
 
-============================================ 26 passed in 0.12s ============================================
+============================================ 29 passed in 0.13s ============================================
 ```
 
 ---
@@ -806,9 +852,10 @@ States:
 
 ### Test Results
 
-- **26/26 tests passing** (100% pass rate)
-- **Test execution time**: ~0.12 seconds
-- **All game rules verified**: Rules 1-A through 3-B
+- **29/29 tests passing** (100% pass rate)
+- **Test execution time**: ~0.13 seconds
+- **All 11 game rules explicitly verified**: Rules 1-A through 3-B
+- **Complete coverage**: Every game rule has dedicated test(s)
 
 ### Simulation Performance
 
@@ -846,8 +893,8 @@ States:
 - Commands module: 95 lines (1 line per function)
 - HTTP server: 160 lines
 - Simulation: 185 lines
-- Tests: 405 lines (26 tests)
-- **Total**: ~1,425 lines
+- Tests: 457 lines (29 tests - all 11 rules explicitly tested)
+- **Total**: ~1,477 lines
 
 
 

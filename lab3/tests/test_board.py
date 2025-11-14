@@ -33,8 +33,8 @@ from board import Board, Card, CardState
 #   - Rule 1-C: flip face-up uncontrolled card as first card
 #   - Rule 1-D: wait for controlled card as first card
 #   - Rule 2-A: flip empty space as second card
-#   - Rule 2-B: flip controlled card as second card
-#   - Rule 2-C: flip face-down card as second card
+#   - Rule 2-B: flip controlled card as second card (fails, doesn't wait)
+#   - Rule 2-C: flip face-down card as second card (turns face-up)
 #   - Rule 2-D: match two cards
 #   - Rule 2-E: cards don't match
 #   - Rule 3-A: remove matched cards on next move
@@ -69,7 +69,7 @@ class TestBoard:
         state = await board.look('player1')
         assert state.startswith('2x2')
     
-    async def test_flip_first_card_face_down(self):
+    async def test_rule_1b_flip_first_card_face_down(self):
         """Test flipping a face-down card as first card (Rule 1-B)."""
         board = Board(2, 2, ['A', 'B', 'A', 'B'])
         state = await board.flip('alice', 0, 0)
@@ -78,7 +78,7 @@ class TestBoard:
         assert lines[1] == 'my A'  # alice controls this card
         assert lines[2] == 'down'  # other cards still face down
     
-    async def test_flip_first_card_face_up_uncontrolled(self):
+    async def test_rule_1c_flip_first_card_face_up_uncontrolled(self):
         """Test flipping a face-up uncontrolled card as first card (Rule 1-C)."""
         board = Board(2, 2, ['A', 'B', 'A', 'B'])
         
@@ -96,7 +96,7 @@ class TestBoard:
         lines = state.split('\n')
         assert 'my A' in lines[1]  # Bob controls it
     
-    async def test_flip_empty_space_first_card(self):
+    async def test_rule_1a_flip_empty_space_first_card(self):
         """Test flipping an empty space as first card (Rule 1-A)."""
         board = Board(2, 2, ['A', 'B', 'A', 'B'])
         
@@ -111,7 +111,7 @@ class TestBoard:
         with pytest.raises(ValueError, match="No card at this position"):
             await board.flip('bob', 0, 0)
     
-    async def test_flip_second_card_matching(self):
+    async def test_rule_2d_flip_second_card_matching(self):
         """Test flipping a matching second card (Rule 2-D)."""
         board = Board(2, 2, ['A', 'B', 'A', 'B'])
         
@@ -124,7 +124,7 @@ class TestBoard:
         assert lines[1] == 'my A'
         assert lines[3] == 'my A'
     
-    async def test_flip_second_card_non_matching(self):
+    async def test_rule_2e_flip_second_card_non_matching(self):
         """Test flipping a non-matching second card (Rule 2-E)."""
         board = Board(2, 2, ['A', 'B', 'A', 'B'])
         
@@ -138,7 +138,7 @@ class TestBoard:
         assert lines[1] == 'up A'
         assert lines[2] == 'up B'
     
-    async def test_flip_empty_space_second_card(self):
+    async def test_rule_2a_flip_empty_space_second_card(self):
         """Test flipping an empty space as second card (Rule 2-A)."""
         board = Board(2, 2, ['A', 'B', 'A', 'B'])
         
@@ -156,7 +156,63 @@ class TestBoard:
         with pytest.raises(ValueError, match="No card at this position"):
             await board.flip('bob', 0, 0)
     
-    async def test_matched_cards_removed(self):
+    async def test_rule_2b_flip_controlled_card_second_card(self):
+        """Test flipping a controlled card as second card (Rule 2-B)."""
+        board = Board(2, 2, ['A', 'B', 'A', 'B'])
+        
+        # Alice flips first card
+        await board.flip('alice', 0, 0)
+        
+        # Alice tries to flip the same card again (controlled by self)
+        with pytest.raises(ValueError, match="Card is already controlled"):
+            await board.flip('alice', 0, 0)
+        
+        # Verify alice relinquished first card but it's still face-up
+        state = await board.look('alice')
+        lines = state.split('\n')
+        assert lines[1] == 'up A'  # Face-up but not controlled by alice
+    
+    async def test_rule_2b_flip_other_player_controlled_second_card(self):
+        """Test flipping another player's controlled card as second card (Rule 2-B)."""
+        board = Board(2, 2, ['A', 'B', 'A', 'B'])
+        
+        # Alice and Bob each flip first cards
+        await board.flip('alice', 0, 0)
+        await board.flip('bob', 0, 1)
+        
+        # Alice tries to flip Bob's controlled card as second card
+        with pytest.raises(ValueError, match="Card is already controlled"):
+            await board.flip('alice', 0, 1)
+        
+        # Alice's first card should be relinquished but face-up
+        state_alice = await board.look('alice')
+        lines_alice = state_alice.split('\n')
+        assert lines_alice[1] == 'up A'  # Alice's first card is face-up but not controlled
+        assert lines_alice[2] == 'up B'  # Bob's card appears as face-up (but controlled by Bob)
+        
+        # Bob should still control his card
+        state_bob = await board.look('bob')
+        assert 'my B' in state_bob  # Bob still controls his card
+    
+    async def test_rule_2c_flip_face_down_second_card(self):
+        """Test flipping a face-down card as second card turns it face-up (Rule 2-C)."""
+        board = Board(2, 2, ['A', 'B', 'A', 'B'])
+        
+        # Alice flips first card (face-down -> face-up)
+        state1 = await board.flip('alice', 0, 0)
+        lines1 = state1.split('\n')
+        assert lines1[1] == 'my A'  # First card is face-up and controlled
+        assert lines1[2] == 'down'  # Second card is still face-down
+        
+        # Alice flips second card (face-down -> should turn face-up per Rule 2-C)
+        state2 = await board.flip('alice', 0, 1)
+        lines2 = state2.split('\n')
+        
+        # Both cards should now be face-up (non-matching, so uncontrolled)
+        assert lines2[1] == 'up A'  # First card face-up
+        assert lines2[2] == 'up B'  # Second card turned face-up by Rule 2-C
+    
+    async def test_rule_3a_matched_cards_removed(self):
         """Test that matched cards are removed on next move (Rule 3-A)."""
         board = Board(2, 2, ['A', 'B', 'A', 'B'])
         
@@ -172,7 +228,7 @@ class TestBoard:
         assert lines[3] == 'none'  # (1,0) removed
         assert lines[2] == 'my B'  # alice's new first card
     
-    async def test_non_matching_cards_turned_face_down(self):
+    async def test_rule_3b_non_matching_cards_turned_face_down(self):
         """Test that non-matching cards turn face down on next move (Rule 3-B)."""
         board = Board(2, 2, ['A', 'B', 'A', 'B'])
         
@@ -300,7 +356,7 @@ class TestBoard:
         assert 'my' in state1
         assert 'my' in state2
     
-    async def test_concurrent_flips_same_card_wait(self):
+    async def test_rule_1d_concurrent_flips_same_card_wait(self):
         """Test that concurrent flips on same card cause waiting (Rule 1-D)."""
         board = Board(2, 2, ['A', 'B', 'A', 'B'])
         
