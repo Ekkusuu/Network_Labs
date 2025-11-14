@@ -276,21 +276,28 @@ class Board:
         :raises: ValueError if operation fails
         """
         row, col = pos
-        card = self._cards[row][col]
         player = self._players[player_id]
         
-        # Rule 1-A: No card there
-        if card is None:
-            raise ValueError("No card at this position")
-        
-        # Check if another player controls this card
-        controller = self._get_controller(pos)
-        
-        if controller is not None and controller != player_id:
-            # Rule 1-D: Wait until we can control it
-            await self._wait_for_card(pos)
-            # After waiting, try again
-            return await self._flip_first_card(player_id, pos)
+        # Rule 1-D: Wait if card is controlled by another player
+        # Keep checking in a loop until we can proceed
+        while True:
+            card = self._cards[row][col]
+            
+            # Rule 1-A: No card there
+            if card is None:
+                raise ValueError("No card at this position")
+            
+            # Check if another player controls this card
+            controller = self._get_controller(pos)
+            
+            if controller is not None and controller != player_id:
+                # Rule 1-D: Wait until we can control it
+                await self._wait_for_card(pos)
+                # After waiting, loop back to check again
+                continue
+            
+            # Card is available, proceed with flip
+            break
         
         # Rule 1-B: Card is face down - turn it face up
         # Rule 1-C: Card is face up but not controlled - take control
@@ -384,9 +391,9 @@ class Board:
             player.first_card = None
             player.second_card = None
             
-            # Wake up anyone waiting for these cards
-            self._wake_waiters(first_pos)
-            self._wake_waiters(second_pos)
+            # Wake up ALL waiters for these cards (they're removed, will never be available)
+            self._wake_waiters(first_pos, wake_all=True)
+            self._wake_waiters(second_pos, wake_all=True)
             self._notify_change()
         
         # Rule 3-B: Turn face down non-matching cards
@@ -435,16 +442,26 @@ class Board:
         finally:
             await self._lock.acquire()
     
-    def _wake_waiters(self, pos: tuple[int, int]) -> None:
+    def _wake_waiters(self, pos: tuple[int, int], wake_all: bool = False) -> None:
         """
-        Wake up one waiter for the card at the given position.
+        Wake up waiters for the card at the given position.
         
         :param pos: position of the card
+        :param wake_all: if True, wake all waiters; if False, wake only one
         """
         if pos in self._waiters and self._waiters[pos]:
-            future = self._waiters[pos].pop(0)
-            if not future.done():
-                future.set_result(None)
+            if wake_all:
+                # Wake all waiters (e.g., when card is removed)
+                waiters = self._waiters[pos][:]  # Copy the list
+                self._waiters[pos].clear()  # Clear the original list
+                for future in waiters:
+                    if not future.done():
+                        future.set_result(None)
+            else:
+                # Wake only one waiter (e.g., when card is released)
+                future = self._waiters[pos].pop(0)
+                if not future.done():
+                    future.set_result(None)
     
     def _ensure_player(self, player_id: str) -> None:
         """
