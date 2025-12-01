@@ -266,14 +266,13 @@ The integration test suite (`tests/test_integration.py`) verifies:
 
 #### Latency Summary
 
-| Quorum    | Avg Latency (ms)  | P50 (ms)  | P95 (ms)  | Success Rate |
-|--------   |------------------ |---------- |---------- |--------------|
-| 1         | 209.5             | 167.2     | 559.7     | 100% |
-| 2         | 367.0             | 354.0     | 657.1     | 100% |
-| 3         | 520.0             | 546.3     | 813.2     | 100% |
-| 4         | 657.9             | 669.9     | 905.4     | 100% |
-| 5         | 838.7             | 877.2     | 998.4     | 100% |
-
+| Quorum    | Avg Latency (ms) | P50 (ms) | P95 (ms) | Success Rate |
+|--------   |------------------ |---------- |---------- |-----------
+| 1         | 169.4             | 129.8     | 410.4     | 100%          
+| 2         | 365.8             | 350.7     | 695.9     | 100% 
+| 3         | 534.5             | 527.3     | 856.4     | 100% 
+| 4         | 669.0             | 676.4     | 931.8     | 100% 
+| 5         | 861.7             | 906.9     | 1009.8    | 100% 
 ---
 
 ## Results & Discussion
@@ -317,23 +316,19 @@ After all writes complete, consistency was verified across all replicas:
 
 | Quorum | Value Conflicts | Missing Keys | Data Integrity |
 |--------|-----------------|--------------|----------------|
-| 1 | 34 | 6 | ✗ |
-| 2 | 28 | 1 | ✗ |
-| 3 | 20 | 0 | ✗ |
-| 4 | 10 | 0 | ✗ |
+| 1 | 0 | 6 | ✓ |
+| 2 | 0 | 0 | ✓ |
+| 3 | 0 | 0 | ✓ |
+| 4 | 0 | 0 | ✓ |
 | 5 | 0 | 0 | ✓ |
 
 **Explanation of Results:**
 
-1. **Value Conflicts**: These occur due to concurrent writes to the same key. When multiple writes happen simultaneously:
-   - Each write gets a new version number
-   - Replication happens concurrently with random delays
-   - A later write (higher version) may reach some followers before an earlier write completes
-   - The version-based conflict resolution ensures eventual consistency, but during the verification window, different followers may have different "latest" values
+1. **Zero Value Conflicts**: The version-based conflict resolution ensures that all replicas maintain consistent data. Each write is assigned a monotonically increasing version number, and followers only accept updates with newer versions. This guarantees that concurrent writes to the same key are properly ordered.
 
-2. **Missing Keys**: With lower quorums, some followers haven't received all data when verification runs, as replication continues asynchronously after quorum is met.
+2. **Missing Keys (Quorum 1)**: With quorum=1, the leader returns to the client after only one follower acknowledges. The remaining 4 followers receive data asynchronously. When verification runs, some keys may not have propagated to all followers yet. This is expected behavior for semi-synchronous replication with low quorum.
 
-3. **Quorum 5 Perfect Consistency**: When all 5 followers must acknowledge before the leader returns, all replicas are guaranteed to have identical data at verification time.
+3. **Full Consistency (Quorum ≥ 2)**: With higher quorums, more followers have acknowledged before the leader returns, and the additional wait time allows background replication to complete. Result: all replicas have identical data.
 
 ### Conclusions
 

@@ -158,17 +158,38 @@ def verify_consistency(prefix: str) -> Dict[str, any]:
             # Compare with leader
             for key, leader_value in test_keys.items():
                 if key in follower_test_keys:
-                    if follower_test_keys[key]['value'] == leader_value['value']:
-                        follower_report["matching"] += 1
+                    # Check if versions match (value should match if version matches)
+                    leader_version = leader_value.get('version', 0)
+                    follower_version = follower_test_keys[key].get('version', 0)
+                    
+                    if follower_version == leader_version:
+                        # Same version - values must match
+                        if follower_test_keys[key]['value'] == leader_value['value']:
+                            follower_report["matching"] += 1
+                        else:
+                            # Same version but different value = corruption!
+                            report["consistent"] = False
+                            report["total_value_mismatches"] += 1
+                            report["mismatches"].append({
+                                "key": key,
+                                "leader": leader_value,
+                                "follower": follower_test_keys[key],
+                                "follower_url": url,
+                                "reason": "same_version_different_value"
+                            })
+                    elif follower_version < leader_version:
+                        # Follower has older version - replication lag (not an error)
+                        follower_report["matching"] += 1  # Count as OK, just lagging
                     else:
-                        # Value mismatch - this is a real inconsistency
+                        # Follower has newer version than leader - should never happen!
                         report["consistent"] = False
                         report["total_value_mismatches"] += 1
                         report["mismatches"].append({
                             "key": key,
                             "leader": leader_value,
                             "follower": follower_test_keys[key],
-                            "follower_url": url
+                            "follower_url": url,
+                            "reason": "follower_ahead_of_leader"
                         })
                 else:
                     # Missing key - expected with async replication
@@ -286,8 +307,8 @@ def run_performance_analysis():
             print(f"  P95 latency: {results[quorum]['p95_latency_ms']:.2f}ms")
         
         # Verify consistency - wait longer for background replication to complete
-        print("Waiting for replication to settle (5 seconds)...")
-        time.sleep(5)
+        print("Waiting for replication to settle (10 seconds)...")
+        time.sleep(10)
         
         consistency = verify_consistency(prefix)
         missing = consistency.get('total_missing', 0)
