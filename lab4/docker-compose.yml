@@ -1,0 +1,85 @@
+services:
+  leader:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PORT=8000
+      - WRITE_QUORUM=5
+      - MIN_DELAY=0
+      - MAX_DELAY=1000
+      - FOLLOWER_HOSTS=follower1:8001,follower2:8002,follower3:8003,follower4:8004,follower5:8005
+    command: python src/leader.py
+    depends_on:
+      - follower1
+      - follower2
+      - follower3
+      - follower4
+      - follower5
+    networks:
+      - kv-network
+
+  follower1:
+    build: .
+    ports:
+      - "8001:8001"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PORT=8001
+      - FOLLOWER_ID=follower-1
+    command: python src/follower.py
+    networks:
+      - kv-network
+
+  follower2:
+    build: .
+    ports:
+      - "8002:8002"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PORT=8002
+      - FOLLOWER_ID=follower-2
+    command: python src/follower.py
+    networks:
+      - kv-network
+
+  follower3:
+    build: .
+    ports:
+      - "8003:8003"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PORT=8003
+      - FOLLOWER_ID=follower-3
+    command: python src/follower.py
+    networks:
+      - kv-network
+
+  follower4:
+    build: .
+    ports:
+      - "8004:8004"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PORT=8004
+      - FOLLOWER_ID=follower-4
+    command: python src/follower.py
+    networks:
+      - kv-network
+
+  follower5:
+    build: .
+    ports:
+      - "8005:8005"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PORT=8005
+      - FOLLOWER_ID=follower-5
+    command: python src/follower.py
+    networks:
+      - kv-network
+
+networks:
+  kv-network:
+    driver: bridge
